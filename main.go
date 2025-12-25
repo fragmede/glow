@@ -338,7 +338,25 @@ func executeCLI(cmd *cobra.Command, src *source, w io.Writer) error {
 		// Otherwise dump output (for piping, redirection, etc.)
 		isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
 		if isTerminal {
-			// Use internal TUI pager for terminal output (like less)
+			// Check if content fits on screen (like less -F)
+			// Count the number of lines in the rendered output
+			lines := strings.Count(out, "\n") + 1
+			
+			// Get terminal height
+			_, termHeight, err := term.GetSize(int(os.Stdout.Fd()))
+			if err != nil {
+				termHeight = 24 // fallback to standard terminal height
+			}
+			
+			// If content fits on screen, just print it and exit (like less -F)
+			if lines <= termHeight {
+				if _, err = fmt.Fprint(w, out); err != nil {
+					return fmt.Errorf("unable to write to writer: %w", err)
+				}
+				return nil
+			}
+			
+			// Content doesn't fit, use internal TUI pager for scrolling
 			path := ""
 			if !isURL(src.URL) {
 				path = src.URL
