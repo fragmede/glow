@@ -334,6 +334,18 @@ func executeCLI(cmd *cobra.Command, src *source, w io.Writer) error {
 		}
 		return runTUI(path, content)
 	default:
+		// Check if output is a terminal - if so, use TUI pager by default
+		// Otherwise dump output (for piping, redirection, etc.)
+		isTerminal := term.IsTerminal(int(os.Stdout.Fd()))
+		if isTerminal {
+			// Use internal TUI pager for terminal output (like less)
+			path := ""
+			if !isURL(src.URL) {
+				path = src.URL
+			}
+			return runTUI(path, content)
+		}
+		// Non-terminal output (piped/redirected) - dump raw content
 		if _, err = fmt.Fprint(w, out); err != nil {
 			return fmt.Errorf("unable to write to writer: %w", err)
 		}
